@@ -3,6 +3,8 @@
 ## Import library
 library(readr)
 library(tidyverse)
+library(caTools)
+library(randomForest)
 
 ## Open dataset
 StudentsPerformance <- read_csv("~/StudentsPerformance.csv")
@@ -134,12 +136,108 @@ ggplot(df, aes(x = `parental level of education`, y = totalScore, fill = `parent
 # master's degree tend to have higher scores than the rest. On the contrary, students whose parents only have
 # high school degree are the worst. This is the case for every test.
 
-# I do not consider the variable lunch as I do not really understand it.
+# Lunch?
+
+ggplot(df, aes(x = lunch, y = totalScore, fill = gender)) +
+  geom_boxplot() +
+  labs(title = "Total Score by lunch", x = "Lunch")
+
+# Students having standard lunch perform better in general.
 
 # Does the test preparation course help to achieve a higher score?
 
 ggplot(df, aes(x = `test preparation course`, y = totalScore, fill = gender)) +
   geom_boxplot() +
-  labs(title = "Total Score by completing the Test Preparation Course or not", x = "Test Preparation Score")
+  labs(title = "Total Score by completing the Test Preparation Course or not", x = "Test Preparation")
 
 # It does help both for female and male students.
+
+
+### Classification models
+
+# Can we find a classification model that is able to predict whether the student is male oder female given
+# the other variables?
+
+# Creating binary variables
+
+df$gender0 <- factor(df$gender, levels = c("male", "female"), labels = c(0, 1)) 
+df$ethnicity0 <- factor(df$`race/ethnicity`, levels = c("group A", "group B", "group C", "group D", "group E"),
+                        labels = c(1, 2, 3, 4, 5))
+df$parentEd0 <- factor(df$`parental level of education`, 
+                       levels = c("some high school", "high school", "some college", "associate's degree",
+                                  "bachelor's degree", "master's degree"), 
+                       labels = c(1, 2, 3, 4, 5, 6))
+df$lunch0 <- factor(df$lunch, levels = c("free/reduced", "standard"), labels = c(0, 1))
+df$testPrep0 <- factor(df$`test preparation course`, levels = c("none", "completed"), labels = c(0, 1))
+
+# Creating training and test set
+
+set.seed(123)
+split <- sample.split(df$gender0, SplitRatio = 0.75)
+training_set <- subset(df, split == TRUE)
+test_set <- subset(df, split == FALSE)
+
+training_set <- training_set[, -c(1:5, 9)]
+test_set <- test_set[, -c(1:5, 9)]
+
+# Fitting Logistic Regression to the training set
+
+classifier <- glm(formula = gender0 ~ parentEd0 + lunch0 + testPrep0 + `math score` + `reading score`
+                  + `writing score`,
+                  family = binomial,
+                  data = training_set)
+
+summary(classifier)
+
+# Parental Education and Writing Score are not significant. But removing them from the model would give us
+# a worse one (Residual deviance and AIC higher)
+
+# Predicting test set results
+
+prob_pred <- predict(classifier, type = "response", newdata = test_set[, -4])
+y_pred <- ifelse(prob_pred > 0.5, 1, 0)
+
+# Making Confusion Matrix
+
+cm <- table(test_set[, 4], y_pred)
+
+# The gender of 219 (out of 250) students are predicted properly.
+# Accuracy: (107+112)/250 = 0.876
+# Sensitivity/Recall: 112/(112+18) = 0.862
+# Specificity: 107/(107+13) = 0.892
+# Precision: 112/(112+13) = 0.896
+# Model looks solid.
+
+
+# Can we also predict if a student did the test preparation?
+
+classifier2 <- glm(formula = testPrep0 ~ ., family = binomial, data = training_set)
+summary(classifier2)
+
+# All variables are significant.
+
+# Predicting test set results
+
+prob_pred2 <- predict(classifier2, type = "response", newdata = test_set[, -7])
+y_pred2 <- ifelse(prob_pred2 > 0.5, 1, 0)
+
+# Confusion Matrix
+
+cm2 <- table(test_set[, 7], y_pred2)
+
+# Accuracy is only 0.728 this time. In addition to that: If we used a model that only predicts "0", the accuracy
+# would be 0.64. So our model is not much better than that.
+
+# Let's try a nonlinear classification model. Random Forest.
+
+classifier3 <- randomForest(x = training_set[, -7], y = training_set$testPrep0, ntree = 10)
+
+# Predicting test set results
+
+y_pred3 <- predict(classifier3, newdata = test_set[, -7])
+
+# Confusion Matrix
+
+cm3 <- table(test_set[, 7], y_pred3)
+
+# CM looks worse than the one for the logistic regression.
