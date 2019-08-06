@@ -218,26 +218,42 @@ summary(classifier2)
 
 # Predicting test set results
 
-prob_pred2 <- predict(classifier2, type = "response", newdata = test_set[, -7])
+prob_pred2 <- predict(classifier2, type = "response", newdata = test_set[, -8])
 y_pred2 <- ifelse(prob_pred2 > 0.5, 1, 0)
 
 # Confusion Matrix
 
-cm2 <- table(test_set[, 7], y_pred2)
+cm2 <- table(unlist(test_set[, 8]), y_pred2)
 
-# Accuracy is only 0.728 this time. In addition to that: If we used a model that only predicts "0", the accuracy
+# Accuracy is only 0.736 this time. In addition to that: If we used a model that only predicts "0", the accuracy
 # would be 0.64. So our model is not much better than that.
 
 # Let's try a nonlinear classification model. Random Forest.
 
-classifier3 <- randomForest(x = training_set[, -7], y = training_set$testPrep0, ntree = 10)
+classifier3 <- randomForest(x = training_set[, -8], y = training_set$testPrep0, ntree = 10, importance = TRUE)
 
 # Predicting test set results
 
-y_pred3 <- predict(classifier3, newdata = test_set[, -7])
+y_pred3 <- predict(classifier3, newdata = test_set[, -8])
 
 # Confusion Matrix
 
-cm3 <- table(test_set[, 7], y_pred3)
+cm3 <- table(unlist(test_set[, 8]), y_pred3)
 
 # CM looks worse than the one for the logistic regression.
+
+importance(classifier3)
+
+# Looking at the Mean Decrease Accuracy and the Mean Decrease Gini, we can try a different Random Forest model
+# without Ethnicity, parental Education and lunch.
+
+training_set2 <- training_set[, -c(5,6,7)]
+test_set2 <- test_set[, -c(5,6,7)]
+
+classifier4 <- randomForest(x = training_set2[, -5], y = training_set2$testPrep0, ntree = 10)
+
+y_pred4 <- predict(classifier4, newdata = test_set2[, -5])
+
+cm4 <- table(unlist(test_set2[, 5]), y_pred4)
+
+# Model accuracy does not improve.
