@@ -1,4 +1,4 @@
-# Students-Performance
+# Are male or female students better?
 
 Examining the influence of gender, ethnicity, parental education, lunch and test
 preparation on students' math score, reading score and writing score.
