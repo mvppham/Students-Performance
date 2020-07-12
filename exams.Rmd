@@ -2,8 +2,8 @@
 title: Students Performance
 author: Michael Pham
 output: 
-   rmarkdown::github_document
-     keep_md: true
+  html_document:
+    keep_md: true
 ---
 
 ## Import libraries
