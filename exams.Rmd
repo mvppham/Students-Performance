@@ -1,4 +1,8 @@
-# Students Performance
+---
+title: Students Performance
+author: Michael Pham
+output: rmarkdown::github_document
+---
 
 ## Import libraries
 ```{r echo=TRUE, results='hide', error=FALSE, message=FALSE, warning=FALSE}
